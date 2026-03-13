@@ -1,6 +1,6 @@
 export HIP_VISIBLE_DEVICES=0,1
-/AI/llama.cpp/build/bin/llama-parallel -m /AI/models/qwen3/Qwen3-4B-Instruct-2507-UD-Q4_K_XL.gguf \
--c 64000 \
+/AI/llama.cpp/build/bin/llama-server -m /AI/models/qwen3/Qwen3-4B-Instruct-2507-UD-Q4_K_XL.gguf \
+-c 4800 \
 -ctk q8_0 \
 -ctv q8_0 \
 -ngl 99 \
@@ -11,6 +11,6 @@ export HIP_VISIBLE_DEVICES=0,1
 --host 0.0.0.0 \
 --port 8080 \
 -fa 1 \
--np 256
+-np 72
 
 #177

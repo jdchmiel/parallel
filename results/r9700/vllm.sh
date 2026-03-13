@@ -1,0 +1,1 @@
+vllm serve Qwen/Qwen3-4B-Instruct-2507-FP8 --reasoning-parser qwen3 --host 0.0.0.0 --port 8000 --tensor-parallel-size 2 --max-num-seqs 32 --max-model-len 8000 --gpu-memory-utilization 0.98 --dtype auto

@@ -4,11 +4,9 @@ import httpx
 from queries import queries
 import time
 
-IN_FLIGHT=36
-# llama.cpp via run sh files
-URL = 'http://127.0.0.1:8080/v1/chat/completions'
+IN_FLIGHT=24
 # vllm via https://github.com/kyuz0/amd-r9700-vllm-toolboxes
-#URL = 'http://127.0.0.1:8000/v1/chat/completions'
+URL = 'http://127.0.0.1:8001/v1/chat/completions'
 
 
 
@@ -31,13 +29,15 @@ Example: 'blue sky' respond 'NO'"""},
     ],
     "temperature": 0,
     "stream": False, # Set to True for streaming responses
-    "max_tokens": 5
+    "max_tokens": 100
     }
     response = await client.post(url=URL, json=PAYLOAD)
     if response.status_code == 200:
         print('.',end='', flush=True)
         reesp = response.json()
-        return (reesp["timings"],reesp["choices"][0]["message"]["content"])
+        #print(reesp)
+        #exit()
+        return (reesp["usage"],reesp["choices"][0]["message"]["content"])
     else:
         print('X',end='', flush=True)
         return 'XXX'
@@ -52,23 +52,21 @@ async def bound_fetch(sem, client,phrase):
 
 async def main():
     sem = asyncio.Semaphore(IN_FLIGHT)
-    timeout = httpx.Timeout(connect=30.0, read=30.0, write=30, pool=30)
-    limits = httpx.Limits(max_keepalive_connections=IN_FLIGHT, max_connections=IN_FLIGHT, keepalive_expiry=30)
-    client = httpx.AsyncClient(limits=limits, timeout=timeout, verify=False)
+    limits = httpx.Limits(max_keepalive_connections=IN_FLIGHT, max_connections=IN_FLIGHT, keepalive_expiry=10)
+    client = httpx.AsyncClient(limits=limits, verify=False)
     results = []
     start_time = time.perf_counter()
     tokens = 0
-    tokens_ms = 0
     pp = 0
-    pp_ms = 0
-    iterations = 1
-    for i in range(iterations):
-        results = await asyncio.gather(*[asyncio.ensure_future(bound_fetch(sem,client,test)) for test in queries], return_exceptions=True)
+    iterations = 2
+    tests = queries * iterations
+#{'id': 'chatcmpl-88def5202e74d7a0', 'object': 'chat.completion', 'created': 1768775512, 'model': 'openai/gpt-oss-20b', 'choices': [{'index': 0, 'message': {'role': 'assistant', 'content': None, 'refusal': None, 'annotations': None, 'audio': None, 'function_call': None, 'tool_calls': [], 'reasoning': 'We need', 'reasoning_content': 'We need'}, 'logprobs': None, 'finish_reason: 'length', 'stop_reason': None, 'token_ids': None}], 'service_tier': None, 'system_fingerprint': None, 'usage': {'prompt_tokens': 167, 'total_tokens': 172, 'completion_tokens': 5, 'prompt_tokens_details': None}, 'prompt_logprobs': None, 'prompt_token_ids': None, 'kv_transfer_params': None}
+
+    for i in range(1):
+        results = await asyncio.gather(*[asyncio.ensure_future(bound_fetch(sem,client,test)) for test in tests], return_exceptions=True)
         for item in results:
-            tokens += item[0]['predicted_n']
-            tokens_ms += item[0]['predicted_ms']
-            pp += item[0]['prompt_n']
-            pp_ms += item[0]['prompt_ms']
+            tokens += item[0]['completion_tokens']
+            pp += item[0]['prompt_tokens']
         #print(results)
     end_time = time.perf_counter()
     duration = end_time-start_time
@@ -77,6 +75,8 @@ async def main():
     print(f"{(len(queries)*iterations)/duration} Decisions per second")
     print(f"{tokens/duration} Tokens generated per second")
     print(f"{pp/duration} Tokens prompt processed per second")
+    for item in results:
+        print(item[1],end='', flush=True)
 #wrong    print(f"{pp/pp_ms} server pp/s")
 #wrong    print(f"{tokens/tokens_ms} server tg/s")
 
